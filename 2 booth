@@ -1,0 +1,372 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_BLOCKS 100
+#define MAX_FILENAME_LENGTH 20
+
+// Data structure to represent a file entry
+typedef struct {
+    char filename[MAX_FILENAME_LENGTH];
+    int startBlock;
+    int blocksAllocated;
+} FileEntry;
+
+void initializeDisk(int disk[], int n) {
+    for (int i = 0; i < n; i++) {
+        disk[i] = 0; // 0 represents free block
+    }
+}
+
+void allocateFile(int disk[], int n, int blocksNeeded, FileEntry directory[], int *fileCount) {
+    char filename[MAX_FILENAME_LENGTH];
+    printf("Enter filename: ");
+    scanf("%s", filename);
+
+    int startBlock = -1;
+    for (int i = 0; i <= n - blocksNeeded; i++) {
+        int j;
+        for (j = i; j < i + blocksNeeded; j++) {
+            if (disk[j] != 0) {
+                break; // not enough contiguous free blocks
+            }
+        }
+        if (j == i + blocksNeeded) {
+            startBlock = i;
+            break;
+        }
+    }
+
+    if (startBlock != -1) {
+        for (int i = startBlock; i < startBlock + blocksNeeded; i++) {
+            disk[i] = 1; // 1 represents occupied block
+        }
+        strcpy(directory[*fileCount].filename, filename);
+        directory[*fileCount].startBlock = startBlock;
+        directory[*fileCount].blocksAllocated = blocksNeeded;
+        (*fileCount)++;
+        printf("File allocated starting from block %d\n", startBlock);
+    } else {
+        printf("File allocation failed. Not enough contiguous free blocks.\n");
+    }
+}
+
+void showDirectory(FileEntry directory[], int fileCount) {
+    printf("Directory:\n");
+    printf("Filename\tStart Block\tBlocks Allocated\n");
+    for (int i = 0; i < fileCount; i++) {
+        printf("%s\t\t%d\t\t%d\n", directory[i].filename, directory[i].startBlock, directory[i].blocksAllocated);
+    }
+}
+
+void deleteFile(int disk[], FileEntry directory[], int *fileCount) {
+    char filename[MAX_FILENAME_LENGTH];
+    printf("Enter filename to delete: ");
+    scanf("%s", filename);
+
+    int found = 0;
+    for (int i = 0; i < *fileCount; i++) {
+        if (strcmp(directory[i].filename, filename) == 0) {
+            found = 1;
+            for (int j = directory[i].startBlock; j < directory[i].startBlock + directory[i].blocksAllocated; j++) {
+                disk[j] = 0; // free the blocks
+            }
+            for (int j = i; j < *fileCount - 1; j++) {
+                directory[j] = directory[j + 1]; // shift directory entries
+            }
+            (*fileCount)--;
+            printf("File '%s' deleted successfully.\n", filename);
+            break;
+        }
+    }
+    if (!found) {
+        printf("File '%s' not found.\n", filename);
+    }
+}
+
+void showBitVector(int disk[], int n) {
+    printf("Bit Vector (Disk Status):\n");
+    for (int i = 0; i < n; i++) {
+        printf("%d ", disk[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    int disk[MAX_BLOCKS];
+    FileEntry directory[MAX_BLOCKS];
+    int diskSize, choice, blocksNeeded, fileCount = 0;
+
+    printf("Enter the size of the disk: ");
+    scanf("%d", &diskSize);
+
+    initializeDisk(disk, diskSize);
+
+    while (1) {
+        printf("\nMenu:\n");
+        printf("1. Create New File\n");
+        printf("2. Show Directory\n");
+        printf("3. Delete File\n");
+        printf("4. Show Bit Vector\n");
+        printf("5. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                printf("Enter number of blocks needed for the file: ");
+                scanf("%d", &blocksNeeded);
+                allocateFile(disk, diskSize, blocksNeeded, directory, &fileCount);
+                break;
+            case 2:
+                showDirectory(directory, fileCount);
+                break;
+            case 3:
+                deleteFile(disk, directory, &fileCount);
+                break;
+            case 4:
+                showBitVector(disk, diskSize);
+                break;
+            case 5:
+                printf("Exiting program.\n");
+                exit(0);
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+    }
+
+    return 0;
+}
+
+##2
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_BLOCKS 100
+#define MAX_FILENAME_LENGTH 20
+#define MAX_INDEX_ENTRIES 10
+
+// Data structure to represent a file entry
+typedef struct {
+    char filename[MAX_FILENAME_LENGTH];
+    int indexBlock;
+    int blocksAllocated[MAX_INDEX_ENTRIES];
+    int numBlocks;
+} FileEntry;
+
+void initializeDisk(int disk[], int n) {
+    for (int i = 0; i < n; i++) {
+        disk[i] = 0; // 0 represents free block
+    }
+}
+
+void allocateFile(int disk[], int n, int blocksNeeded, FileEntry directory[], int *fileCount) {
+    char filename[MAX_FILENAME_LENGTH];
+    printf("Enter filename: ");
+    scanf("%s", filename);
+
+    int indexBlock = -1;
+    for (int i = 0; i <= n - blocksNeeded; i++) {
+        int j;
+        for (j = i; j < i + blocksNeeded; j++) {
+            if (disk[j] != 0) {
+                break; // not enough contiguous free blocks
+            }
+        }
+        if (j == i + blocksNeeded) {
+            indexBlock = i;
+            break;
+        }
+    }
+
+    if (indexBlock != -1) {
+        for (int i = indexBlock; i < indexBlock + blocksNeeded; i++) {
+            disk[i] = 1; // 1 represents occupied block
+        }
+        strcpy(directory[*fileCount].filename, filename);
+        directory[*fileCount].indexBlock = indexBlock;
+        directory[*fileCount].blocksAllocated[0] = indexBlock + 1;
+        directory[*fileCount].numBlocks = 1;
+        (*fileCount)++;
+        printf("File allocated with index block at block %d\n", indexBlock);
+    } else {
+        printf("File allocation failed. Not enough contiguous free blocks.\n");
+    }
+}
+
+void showDirectory(FileEntry directory[], int fileCount) {
+    printf("Directory:\n");
+    printf("Filename\tIndex Block\tBlocks Allocated\n");
+    for (int i = 0; i < fileCount; i++) {
+        printf("%s\t\t%d\t\t", directory[i].filename, directory[i].indexBlock);
+        for (int j = 0; j < directory[i].numBlocks; j++) {
+            printf("%d ", directory[i].blocksAllocated[j]);
+        }
+        printf("\n");
+    }
+}
+
+void deleteFile(int disk[], FileEntry directory[], int *fileCount) {
+    char filename[MAX_FILENAME_LENGTH];
+    printf("Enter filename to delete: ");
+    scanf("%s", filename);
+
+    int found = 0;
+    for (int i = 0; i < *fileCount; i++) {
+        if (strcmp(directory[i].filename, filename) == 0) {
+            found = 1;
+            for (int j = 0; j < directory[i].numBlocks; j++) {
+                disk[directory[i].blocksAllocated[j] - 1] = 0; // free the blocks
+            }
+            for (int j = i; j < *fileCount - 1; j++) {
+                directory[j] = directory[j + 1]; // shift directory entries
+            }
+            (*fileCount)--;
+            printf("File '%s' deleted successfully.\n", filename);
+            break;
+        }
+    }
+    if (!found) {
+        printf("File '%s' not found.\n", filename);
+    }
+}
+
+void showBitVector(int disk[], int n) {
+    printf("Bit Vector (Disk Status):\n");
+    for (int i = 0; i < n; i++) {
+        printf("%d ", disk[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    int disk[MAX_BLOCKS];
+    FileEntry directory[MAX_BLOCKS];
+    int diskSize, choice, blocksNeeded, fileCount = 0;
+
+    printf("Enter the size of the disk: ");
+    scanf("%d", &diskSize);
+
+    initializeDisk(disk, diskSize);
+
+    while (1) {
+        printf("\nMenu:\n");
+        printf("1. Create New File\n");
+        printf("2. Show Directory\n");
+        printf("3. Delete File\n");
+        printf("4. Show Bit Vector\n");
+        printf("5. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                printf("Enter number of blocks needed for the file: ");
+                scanf("%d", &blocksNeeded);
+                allocateFile(disk, diskSize, blocksNeeded, directory, &fileCount);
+                break;
+            case 2:
+                showDirectory(directory, fileCount);
+                break;
+            case 3:
+                deleteFile(disk, directory, &fileCount);
+                break;
+            case 4:
+                showBitVector(disk, diskSize);
+                break;
+            case 5:
+                printf("Exiting program.\n");
+                exit(0);
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+    }
+
+    return 0;
+}
+
+##31
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<math.h>
+#include<limits.h>
+
+int fcfs_disk_scheduling(int requests[], int n, int head) {
+    int total_seek_time = 0;
+    int current_track = head;
+
+    for (int i = 0; i < n; i++) {
+        total_seek_time += abs(current_track - requests[i]);
+        current_track = requests[i];
+    }
+
+    return total_seek_time;
+}
+
+int sstf_disk_scheduling(int requests[], int n, int head) {
+    int total_seek_time = 0;
+    int current_track = head;
+
+    while (n > 0) {
+        int min_seek = INT_MAX;
+        int min_index = -1;
+
+        for (int i = 0; i < n; i++) {
+            int seek = abs(current_track - requests[i]);
+            if (seek < min_seek) {
+                min_seek = seek;
+                min_index = i;
+            }
+        }
+
+        total_seek_time += min_seek;
+        current_track = requests[min_index];
+
+        for (int i = min_index; i < n - 1; i++) {
+            requests[i] = requests[i + 1];
+        }
+
+        n--;
+    }
+
+    return total_seek_time;
+}
+
+int main() {
+    int n, head;
+    
+    printf("Enter the number of requests: ");
+    scanf("%d", &n);
+    
+    int requests[n];
+    
+    printf("Enter the disk request sequence: ");
+    for(int i = 0; i < n; i++) {
+        scanf("%d", &requests[i]);
+    }
+    
+    printf("Enter the initial head position: ");
+    scanf("%d", &head);
+    
+    int choice;
+    
+    printf("Choose disk scheduling algorithm:\n");
+    printf("1. FCFS\n");
+    printf("2. SSTF\n");
+    scanf("%d", &choice);
+    
+    switch (choice) {
+        case 1:
+            printf("Total seek time using FCFS: %d\n", fcfs_disk_scheduling(requests, n, head));
+            break;
+        case 2:
+            printf("Total seek time using SSTF: %d\n", sstf_disk_scheduling(requests, n, head));
+            break;
+        default:
+            printf("Invalid choice\n");
+    }
+
+    return 0;
+}
